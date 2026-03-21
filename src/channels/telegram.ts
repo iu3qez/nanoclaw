@@ -26,12 +26,16 @@ export interface TelegramChannelOpts {
  */
 function toTelegramMarkdownV1(text: string): string {
   let result = text;
-  // Headers → bold
-  result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
-  // **bold** → *bold*
+  // **bold** → *bold* (before header conversion to avoid double *)
   result = result.replace(/\*\*(.+?)\*\*/g, '*$1*');
   // __bold__ → *bold*
   result = result.replace(/__(.+?)__/g, '*$1*');
+  // Headers → bold (must come after **bold** conversion)
+  result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+  // Bullet points: * item → • item (avoid breaking Markdown v1 parsing)
+  result = result.replace(/^\* /gm, '• ');
+  // - item → • item
+  result = result.replace(/^- /gm, '• ');
   return result;
 }
 
