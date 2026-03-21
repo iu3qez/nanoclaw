@@ -29,6 +29,13 @@ const MODEL_HAIKU = 'claude-haiku-4-5';
 const MODEL_SONNET = 'claude-sonnet-4-6';
 const MODEL_OPUS = 'claude-opus-4-6';
 
+/** Extract user message text from XML-formatted prompt. */
+function extractMessageText(prompt: string): string {
+  const matches = [...prompt.matchAll(/<message[^>]*>([\s\S]*?)<\/message>/g)];
+  if (matches.length === 0) return prompt;
+  return matches.map(m => m[1]).join('\n').trim();
+}
+
 /**
  * Classify message complexity to pick the right model.
  * Heuristic based on whether the task needs deep reasoning.
@@ -40,8 +47,9 @@ const MODEL_OPUS = 'claude-opus-4-6';
 function selectModel(prompt: string, isResume: boolean): string {
   if (isResume) return MODEL_SONNET;
 
-  const lower = prompt.toLowerCase();
-  const wordCount = prompt.split(/\s+/).length;
+  const text = extractMessageText(prompt);
+  const lower = text.toLowerCase();
+  const wordCount = text.split(/\s+/).length;
 
   // Opus: deep reasoning, code, analysis, planning
   const opusPatterns = [
@@ -219,7 +227,8 @@ export async function* query(input: {
 
     const model = selectModel(promptText, !!sessionId);
     const t0 = Date.now();
-    console.error(`[claude-backend] Model: ${model} (prompt: ${promptText.length} chars)`);
+    const msgPreview = extractMessageText(promptText).substring(0, 50);
+    console.error(`[claude-backend] Model: ${model} (text: "${msgPreview}")`);
 
     const args = buildCliArgs({
       prompt: promptText,
