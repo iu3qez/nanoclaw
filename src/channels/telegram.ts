@@ -20,9 +20,23 @@ export interface TelegramChannelOpts {
 }
 
 /**
- * Send a message with Telegram Markdown parse mode, falling back to plain text.
- * Claude's output naturally matches Telegram's Markdown v1 format:
- *   *bold*, _italic_, `code`, ```code blocks```, [links](url)
+ * Convert Claude's extended Markdown to Telegram Markdown v1.
+ * v1 supports: *bold*, _italic_, `code`, ```code blocks```, [links](url)
+ * Strips unsupported syntax (## headers → *bold*,  **bold** → *bold*).
+ */
+function toTelegramMarkdownV1(text: string): string {
+  let result = text;
+  // Headers → bold
+  result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+  // **bold** → *bold*
+  result = result.replace(/\*\*(.+?)\*\*/g, '*$1*');
+  // __bold__ → *bold*
+  result = result.replace(/__(.+?)__/g, '*$1*');
+  return result;
+}
+
+/**
+ * Send a message with Telegram Markdown v1 parse mode, falling back to plain text.
  */
 async function sendTelegramMessage(
   api: { sendMessage: Api['sendMessage'] },
@@ -31,7 +45,8 @@ async function sendTelegramMessage(
   options: { message_thread_id?: number } = {},
 ): Promise<void> {
   try {
-    await api.sendMessage(chatId, text, {
+    const md = toTelegramMarkdownV1(text);
+    await api.sendMessage(chatId, md, {
       ...options,
       parse_mode: 'Markdown',
     });
