@@ -323,6 +323,11 @@ function waitForIpcMessage(): Promise<string | null> {
   });
 }
 
+/** Check if the prompt needs parcel tracking MCP (avoid slow startup when not needed). */
+function needsParcelMcp(prompt: string): boolean {
+  return /\b(pacc[oi]|pacco|track|tracking|spedizion|corriere|consegna|shipment|delivery|parcel)\b/i.test(prompt);
+}
+
 /**
  * Run a single query and stream results via writeOutput.
  * Uses MessageStream (AsyncIterable) to keep isSingleUserTurn=false,
@@ -411,6 +416,7 @@ async function runQuery(
         'mcp__gmail__*',
         'mcp__gmail2__*',
         'mcp__email__*',
+        'mcp__parcel__*',
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -434,6 +440,11 @@ async function runQuery(
         email: {
           command: 'npx',
           args: ['-y', '@codefuturist/email-mcp'],
+          env: {},
+        },
+        parcel: {
+          command: 'node',
+          args: ['/opt/parcel-tracking-mcp/dist/index.js'],
           env: {},
         },
         gmail2: {

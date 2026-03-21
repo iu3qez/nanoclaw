@@ -218,6 +218,7 @@ export async function* query(input: {
     const promptText = messageQueue.splice(0).join('\n');
 
     const model = selectModel(promptText, !!sessionId);
+    const t0 = Date.now();
     console.error(`[claude-backend] Model: ${model} (prompt: ${promptText.length} chars)`);
 
     const args = buildCliArgs({
@@ -252,7 +253,12 @@ export async function* query(input: {
       throw err;
     });
 
+    let firstMsgLogged = false;
     for await (const msg of channel) {
+      if (!firstMsgLogged) {
+        console.error(`[claude-backend] First message from CLI: ${Date.now() - t0}ms`);
+        firstMsgLogged = true;
+      }
       // Track session ID internally for --resume on follow-up messages
       if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
         sessionId = msg.session_id;
@@ -261,6 +267,7 @@ export async function* query(input: {
     }
 
     const exitCode = await exitPromise;
+    console.error(`[claude-backend] CLI finished: ${Date.now() - t0}ms (exit: ${exitCode})`);
     activeChild = null;
     globalActiveChild = null;
 

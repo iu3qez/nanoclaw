@@ -183,6 +183,16 @@ function buildVolumeMounts(
     });
   }
 
+  // Parcel tracking MCP config (17track API token)
+  const parcelConfig = path.join(homeDir, '.config', 'parcel-tracking-mcp', 'config.json');
+  if (fs.existsSync(parcelConfig)) {
+    mounts.push({
+      hostPath: parcelConfig,
+      containerPath: '/opt/parcel-tracking-mcp/dist/config.json',
+      readonly: true,
+    });
+  }
+
   // Email MCP config (IMAP/SMTP accounts)
   const emailMcpDir = path.join(homeDir, '.config', 'email-mcp');
   if (fs.existsSync(emailMcpDir)) {
