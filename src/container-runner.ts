@@ -164,7 +164,7 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Gmail credentials directory (for Gmail MCP inside the container)
+  // Gmail credentials directories (for Gmail MCP inside the container)
   const homeDir = os.homedir();
   const gmailDir = path.join(homeDir, '.gmail-mcp');
   if (fs.existsSync(gmailDir)) {
@@ -172,6 +172,24 @@ function buildVolumeMounts(
       hostPath: gmailDir,
       containerPath: '/home/node/.gmail-mcp',
       readonly: false, // MCP may need to refresh OAuth tokens
+    });
+  }
+  const gmailDir2 = path.join(homeDir, '.gmail-mcp-2');
+  if (fs.existsSync(gmailDir2)) {
+    mounts.push({
+      hostPath: gmailDir2,
+      containerPath: '/home/node/.gmail-mcp-2',
+      readonly: false,
+    });
+  }
+
+  // Email MCP config (IMAP/SMTP accounts)
+  const emailMcpDir = path.join(homeDir, '.config', 'email-mcp');
+  if (fs.existsSync(emailMcpDir)) {
+    mounts.push({
+      hostPath: emailMcpDir,
+      containerPath: '/home/node/.config/email-mcp',
+      readonly: false,
     });
   }
 
