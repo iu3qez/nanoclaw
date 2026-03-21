@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser, claude-code, and MCP servers globally
+RUN npm install -g agent-browser @anthropic-ai/claude-code @gongrzhe/server-gmail-autoauth-mcp @codefuturist/email-mcp
 
 # Create app directory
 WORKDIR /app
@@ -55,7 +55,7 @@ RUN chmod +x /usr/local/bin/pdf-reader
 
 # Install parcel-tracking-mcp from GitHub
 RUN git clone --depth 1 https://github.com/iamfiro/parcel-tracking-mcp.git /opt/parcel-tracking-mcp \
-    && cd /opt/parcel-tracking-mcp && npm install && npm run build && rm -rf .git
+    && cd /opt/parcel-tracking-mcp && npm install && npx tsc && rm -rf .git
 
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input

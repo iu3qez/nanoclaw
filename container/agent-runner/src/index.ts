@@ -433,23 +433,23 @@ async function runQuery(
           },
         },
         gmail: {
-          command: 'npx',
-          args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+          command: 'bun',
+          args: ['/usr/local/lib/node_modules/@gongrzhe/server-gmail-autoauth-mcp/dist/index.js'],
           env: {},
         },
         email: {
-          command: 'npx',
-          args: ['-y', '@codefuturist/email-mcp'],
+          command: 'email-mcp',
+          args: [],
           env: {},
         },
         parcel: {
-          command: 'node',
-          args: ['/opt/parcel-tracking-mcp/dist/index.js'],
+          command: 'bun',
+          args: ['/opt/parcel-tracking-mcp/index.js'],
           env: {},
         },
         gmail2: {
-          command: 'npx',
-          args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+          command: 'bun',
+          args: ['/usr/local/lib/node_modules/@gongrzhe/server-gmail-autoauth-mcp/dist/index.js'],
           env: {
             GMAIL_OAUTH_PATH: '/home/node/.gmail-mcp-2/gcp-oauth.keys.json',
             GMAIL_CREDENTIALS_PATH: '/home/node/.gmail-mcp-2/credentials.json',

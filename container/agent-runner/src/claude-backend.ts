@@ -31,7 +31,7 @@ const MODEL_OPUS = 'claude-opus-4-6';
 
 /** Extract user message text from XML-formatted prompt. */
 function extractMessageText(prompt: string): string {
-  const matches = [...prompt.matchAll(/<message[^>]*>([\s\S]*?)<\/message>/g)];
+  const matches = [...prompt.matchAll(/<message\s[^>]*>([^<]*)<\/message>/g)];
   if (matches.length === 0) return prompt;
   return matches.map(m => m[1]).join('\n').trim();
 }
@@ -44,8 +44,7 @@ function extractMessageText(prompt: string): string {
  * - Sonnet: compose text, reason about results, multi-step but straightforward
  * - Opus: complex analysis, code, architecture, deep reasoning
  */
-function selectModel(prompt: string, isResume: boolean): string {
-  if (isResume) return MODEL_SONNET;
+function selectModel(prompt: string, _isResume: boolean): string {
 
   const text = extractMessageText(prompt);
   const lower = text.toLowerCase();

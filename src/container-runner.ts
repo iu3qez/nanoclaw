@@ -184,11 +184,16 @@ function buildVolumeMounts(
   }
 
   // Parcel tracking MCP config (17track API token)
-  const parcelConfig = path.join(homeDir, '.config', 'parcel-tracking-mcp', 'config.json');
+  const parcelConfig = path.join(
+    homeDir,
+    '.config',
+    'parcel-tracking-mcp',
+    'config.json',
+  );
   if (fs.existsSync(parcelConfig)) {
     mounts.push({
       hostPath: parcelConfig,
-      containerPath: '/opt/parcel-tracking-mcp/dist/config.json',
+      containerPath: '/opt/parcel-tracking-mcp/config.json',
       readonly: true,
     });
   }
