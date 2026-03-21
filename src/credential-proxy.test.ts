@@ -11,7 +11,7 @@ vi.mock('./logger.js', () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
 }));
 
-import { startCredentialProxy } from './credential-proxy.js';
+import { startCredentialProxy, resetOAuthTokenCache } from './credential-proxy.js';
 
 function makeRequest(
   port: number,
@@ -68,9 +68,12 @@ describe('credential-proxy', () => {
     await new Promise<void>((r) => proxyServer?.close(() => r()));
     await new Promise<void>((r) => upstreamServer?.close(() => r()));
     for (const key of Object.keys(mockEnv)) delete mockEnv[key];
+    resetOAuthTokenCache();
+    delete process.env.CLAUDE_CREDENTIALS_PATH;
   });
 
   async function startProxy(env: Record<string, string>): Promise<number> {
+    process.env.CLAUDE_CREDENTIALS_PATH = '/tmp/.nonexistent-creds.json';
     Object.assign(mockEnv, env, {
       ANTHROPIC_BASE_URL: `http://127.0.0.1:${upstreamPort}`,
     });

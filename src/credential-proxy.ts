@@ -5,17 +5,48 @@
  *
  * Two auth modes:
  *   API key:  Proxy injects x-api-key on every request.
- *   OAuth:    Container CLI exchanges its placeholder token for a temp
- *             API key via /api/oauth/claude_cli/create_api_key.
- *             Proxy injects real OAuth token on that exchange request;
- *             subsequent requests carry the temp key which is valid as-is.
+ *   OAuth:    Reads fresh token from ~/.claude/.credentials.json on each
+ *             request (auto-refreshed by Claude Code on the host).
+ *             Falls back to CLAUDE_CODE_OAUTH_TOKEN in .env.
  */
 import { createServer, Server } from 'http';
 import { request as httpsRequest } from 'https';
 import { request as httpRequest, RequestOptions } from 'http';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 
 import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
+
+let cachedOAuthToken: string | undefined;
+let cacheExpiresAt = 0;
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+export function resetOAuthTokenCache(): void {
+  cachedOAuthToken = undefined;
+  cacheExpiresAt = 0;
+}
+
+function getFreshOAuthToken(fallback: string | undefined): string | undefined {
+  const now = Date.now();
+  if (cachedOAuthToken && now < cacheExpiresAt) return cachedOAuthToken;
+  try {
+    const credsPath =
+      process.env.CLAUDE_CREDENTIALS_PATH ||
+      join(homedir(), '.claude', '.credentials.json');
+    const creds = JSON.parse(readFileSync(credsPath, 'utf-8'));
+    const token = creds?.claudeAiOauth?.accessToken;
+    if (token) {
+      cachedOAuthToken = token;
+      cacheExpiresAt = now + CACHE_TTL_MS;
+      return token;
+    }
+  } catch {
+    // credentials file missing or unreadable
+  }
+  return fallback;
+}
 
 export type AuthMode = 'api-key' | 'oauth';
 
@@ -35,7 +66,7 @@ export function startCredentialProxy(
   ]);
 
   const authMode: AuthMode = secrets.ANTHROPIC_API_KEY ? 'api-key' : 'oauth';
-  const oauthToken =
+  const envOAuthToken =
     secrets.CLAUDE_CODE_OAUTH_TOKEN || secrets.ANTHROPIC_AUTH_TOKEN;
 
   const upstreamUrl = new URL(
@@ -67,14 +98,13 @@ export function startCredentialProxy(
           delete headers['x-api-key'];
           headers['x-api-key'] = secrets.ANTHROPIC_API_KEY;
         } else {
-          // OAuth mode: replace placeholder Bearer token with the real one
-          // only when the container actually sends an Authorization header
-          // (exchange request + auth probes). Post-exchange requests use
-          // x-api-key only, so they pass through without token injection.
+          // OAuth mode: replace placeholder Bearer token with fresh token
+          // from ~/.claude/.credentials.json (auto-refreshed by host CLI).
           if (headers['authorization']) {
             delete headers['authorization'];
-            if (oauthToken) {
-              headers['authorization'] = `Bearer ${oauthToken}`;
+            const freshToken = getFreshOAuthToken(envOAuthToken);
+            if (freshToken) {
+              headers['authorization'] = `Bearer ${freshToken}`;
             }
           }
         }
