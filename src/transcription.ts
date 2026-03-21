@@ -96,3 +96,13 @@ export async function transcribeAudioMessage(
 export function isVoiceMessage(msg: WAMessage): boolean {
   return msg.message?.audioMessage?.ptt === true;
 }
+
+/** Transcribe an audio buffer directly (channel-agnostic). */
+export async function transcribeBuffer(
+  audioBuffer: Buffer,
+): Promise<string | null> {
+  const config = DEFAULT_CONFIG;
+  if (!config.enabled) return config.fallbackMessage;
+  const transcript = await transcribeWithOpenAI(audioBuffer, config);
+  return transcript ? transcript.trim() : config.fallbackMessage;
+}

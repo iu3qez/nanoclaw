@@ -4,6 +4,7 @@ import { Api, Bot } from 'grammy';
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
+import { transcribeBuffer } from '../transcription.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 import {
   Channel,
@@ -51,6 +52,19 @@ export class TelegramChannel implements Channel {
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
     this.opts = opts;
+  }
+
+  private downloadFile(url: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      https
+        .get(url, (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+          res.on('error', reject);
+        })
+        .on('error', reject);
+    });
   }
 
   async connect(): Promise<void> {
@@ -201,7 +215,23 @@ export class TelegramChannel implements Channel {
 
     this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-    this.bot.on('message:voice', (ctx) => storeNonText(ctx, '[Voice message]'));
+    this.bot.on('message:voice', async (ctx) => {
+      try {
+        const file = await ctx.getFile();
+        const url =
+          `https://api.telegram.org/file/bot${this.botToken}/` + file.file_path;
+        const buf = await this.downloadFile(url);
+        const transcript = await transcribeBuffer(buf);
+        if (transcript) {
+          storeNonText(ctx, `[Voice: ${transcript}]`);
+        } else {
+          storeNonText(ctx, '[Voice Message - transcription unavailable]');
+        }
+      } catch (err) {
+        logger.error({ err }, 'Telegram voice transcription error');
+        storeNonText(ctx, '[Voice Message - transcription failed]');
+      }
+    });
     this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
     this.bot.on('message:document', (ctx) => {
       const name = ctx.message.document?.file_name || 'file';
