@@ -65,6 +65,7 @@ export interface BuildCliArgsOptions {
   systemPromptAppend?: string;
   additionalDirectories?: string[];
   allowedTools: string[];
+  model?: string;
 }
 
 /**
@@ -92,6 +93,10 @@ export function buildCliArgs(opts: BuildCliArgsOptions): string[] {
 
   if (opts.systemPromptAppend) {
     args.push('--append-system-prompt', opts.systemPromptAppend);
+  }
+
+  if (opts.model) {
+    args.push('--model', opts.model);
   }
 
   if (opts.sessionId) {

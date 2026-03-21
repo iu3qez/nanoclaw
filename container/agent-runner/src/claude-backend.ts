@@ -23,6 +23,53 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// ── Model selection ─────────────────────────────────────────────────────────
+
+const MODEL_HAIKU = 'claude-haiku-4-5';
+const MODEL_SONNET = 'claude-sonnet-4-6';
+const MODEL_OPUS = 'claude-opus-4-6';
+
+/**
+ * Classify message complexity to pick the right model.
+ * Heuristic based on whether the task needs deep reasoning.
+ *
+ * - Haiku: tool execution (email, search, status), simple Q&A, greetings
+ * - Sonnet: compose text, reason about results, multi-step but straightforward
+ * - Opus: complex analysis, code, architecture, deep reasoning
+ */
+function selectModel(prompt: string, isResume: boolean): string {
+  if (isResume) return MODEL_SONNET;
+
+  const lower = prompt.toLowerCase();
+  const wordCount = prompt.split(/\s+/).length;
+
+  // Opus: deep reasoning, code, analysis, planning
+  const opusPatterns = [
+    /\b(analiz|refactor|architect|design|debug|ottimiz)\b/i,
+    /\b(implement|scrivi.*codice|write.*code|programm)\b/i,
+    /\b(confronta|compara|valuta.*pro.*contro|trade.?off)\b/i,
+    /\b(spiega.*dettaglio|in depth|approfond|comprehensive)\b/i,
+    /\b(business plan|strategia|pianifica)\b/i,
+  ];
+  if (opusPatterns.some(p => p.test(lower)) || wordCount > 200) {
+    return MODEL_OPUS;
+  }
+
+  // Sonnet: compose, draft, reason, explain, summarize in depth
+  const sonnetPatterns = [
+    /\b(scrivi|componi|redigi|draft|write|rispondi.*email|reply)\b/i,
+    /\b(riassumi|summarize|spiega|explain)\b/i,
+    /\b(perché|why|come funziona|how does)\b/i,
+    /\b(opinione|consiglio|sugger|recommend)\b/i,
+  ];
+  if (sonnetPatterns.some(p => p.test(lower))) {
+    return MODEL_SONNET;
+  }
+
+  // Haiku: everything else — tool calls, status checks, short Q&A, greetings
+  return MODEL_HAIKU;
+}
+
 // ── SDK-compatible type re-exports ───────────────────────────────────────────
 
 export type HookCallback = (
@@ -170,6 +217,9 @@ export async function* query(input: {
     // Collect all pending messages into a single prompt
     const promptText = messageQueue.splice(0).join('\n');
 
+    const model = selectModel(promptText, !!sessionId);
+    console.error(`[claude-backend] Model: ${model} (prompt: ${promptText.length} chars)`);
+
     const args = buildCliArgs({
       prompt: promptText,
       sessionId,
@@ -177,6 +227,7 @@ export async function* query(input: {
       systemPromptAppend: options.systemPrompt?.append,
       additionalDirectories: options.additionalDirectories,
       allowedTools: options.allowedTools,
+      model,
     });
 
     const child = spawn('claude', args, {
