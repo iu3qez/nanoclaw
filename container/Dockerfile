@@ -57,6 +57,7 @@ RUN chmod +x /usr/local/bin/pdf-reader
 RUN git clone --depth 1 https://github.com/iamfiro/parcel-tracking-mcp.git /opt/parcel-tracking-mcp \
     && cd /opt/parcel-tracking-mcp && npm install && npx tsc && rm -rf .git
 
+
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input
 
