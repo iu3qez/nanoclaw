@@ -68,6 +68,7 @@ function selectModel(prompt: string, _isResume: boolean): string {
     /\b(riassumi|summarize|spiega|explain)\b/i,
     /\b(perché|why|come funziona|how does)\b/i,
     /\b(opinione|consiglio|sugger|recommend)\b/i,
+    /\b(deep.research|ricerca approfondita|ricerca su)\b/i,
   ];
   if (sonnetPatterns.some(p => p.test(lower))) {
     return MODEL_SONNET;
@@ -75,6 +76,23 @@ function selectModel(prompt: string, _isResume: boolean): string {
 
   // Haiku: everything else — tool calls, status checks, short Q&A, greetings
   return MODEL_HAIKU;
+}
+
+/**
+ * Parse /model <name> prefix from a prompt.
+ * Returns the full model ID if valid, or null.
+ * Accepts short aliases: haiku, sonnet, opus.
+ */
+function parseModelOverride(prompt: string): string | null {
+  const match = prompt.match(/^\/model\s+(\S+)/i);
+  if (!match) return null;
+  const alias = match[1].toLowerCase();
+  const aliases: Record<string, string> = {
+    haiku: MODEL_HAIKU,
+    sonnet: MODEL_SONNET,
+    opus: MODEL_OPUS,
+  };
+  return aliases[alias] ?? null;
 }
 
 // ── SDK-compatible type re-exports ───────────────────────────────────────────
@@ -224,13 +242,18 @@ export async function* query(input: {
     // Collect all pending messages into a single prompt
     const promptText = messageQueue.splice(0).join('\n');
 
-    const model = selectModel(promptText, !!sessionId);
+    // /model <name> override: extract forced model and strip the prefix
+    const modelOverride = parseModelOverride(promptText);
+    const cleanedPrompt = modelOverride
+      ? promptText.replace(/^\/model\s+\S+\s*/i, '')
+      : promptText;
+    const model = modelOverride ?? selectModel(cleanedPrompt, !!sessionId);
     const t0 = Date.now();
-    const msgPreview = extractMessageText(promptText).substring(0, 50);
-    console.error(`[claude-backend] Model: ${model} (text: "${msgPreview}")`);
+    const msgPreview = extractMessageText(cleanedPrompt).substring(0, 50);
+    console.error(`[claude-backend] Model: ${model}${modelOverride ? ' (forced)' : ''} (text: "${msgPreview}")`);
 
     const args = buildCliArgs({
-      prompt: promptText,
+      prompt: cleanedPrompt,
       sessionId,
       mcpConfigPath,
       systemPromptAppend: options.systemPrompt?.append,
