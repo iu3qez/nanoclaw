@@ -17,6 +17,7 @@ import {
   IDLE_TIMEOUT,
   TIMEZONE,
 } from './config.js';
+import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
 import {
@@ -281,6 +282,18 @@ function buildContainerArgs(
     args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+  }
+
+  // Pass through non-secret env vars that container tasks may need.
+  // Read from .env since these are not loaded into process.env by default.
+  const passthroughKeys = [
+    'TELEGRAM_DIGEST_BOT_TOKEN',
+    'TELEGRAM_DIGEST_CHAT_ID',
+  ];
+  const passthroughVars = readEnvFile(passthroughKeys);
+  for (const key of passthroughKeys) {
+    const val = process.env[key] || passthroughVars[key];
+    if (val) args.push('-e', `${key}=${val}`);
   }
 
   // Runtime-specific args for host gateway resolution
